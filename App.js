@@ -1,13 +1,18 @@
 
-import React,  { useState, useEffect,  createRef } from 'react';
+import React,  { useState, useEffect,  createRef, createContext, useRef } from 'react';
 import {  StyleSheet, View } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 import * as Location from 'expo-location';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { SelectList } from 'react-native-dropdown-select-list'
+import { SelectList } from 'react-native-dropdown-select-list';
+
+
+// import io from  './assets/socket.io';
+// import SocketIoClient from 'socket.io-client' 
 
 
 export default function App() {
+
 
   const [location, setLocation] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -254,18 +259,38 @@ export default function App() {
     {key:"bria", idLinha:"Y98", value:"Y98 - Ribeirão / Jardim Paulista"}
   ]);
 
-
   const mapRef = createRef();
+  
+//   const socket = SocketIoClient('https://transporteservico.urbs.curitiba.pr.gov.br:3000',{
+//     transports: ['websocket', 'polling'],
+//  });
+
 
   useEffect(() => {
+    // socket.open();
+
+    // console.log(socket);
+   
+    // socket.on('connect_error', (error) => {
+    //   console.log('errro', error); // true
+    //   // ...
+    // });
+    // // console.log(socket)
+    // socket.on('connect', () => {
+    //   console.log(socket.connected); // true
+    // }); 
+    // socket.on('lista 550', (a) => {console.log(a);});
     
+
+    // socket.emit('get linha',550);
+
       (async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
             setErrorMsg('sem permissão')
             return;
         }
-
+ 
         let location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
             enableHighAccuracy: true,
@@ -283,7 +308,7 @@ export default function App() {
   const [ticking, setTicking] = useState(true),
   [count, setCount] = useState(0)
   
-  useEffect(() => {
+  useEffect(() => { 
       setStopEvent(true)
 
       const timer = setTimeout(() => {
@@ -304,6 +329,53 @@ export default function App() {
       // mapRef.current.animateCamera({center: {"latitude":location.coords.latitude, "longitude": location.coords.longitude}});
   }
 
+
+
+  function decodePolyline(encoded) {
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+    let coordinates = [];
+    let shift = 0;
+    let result = 0;
+    let byte = null;
+    let latitude_change;
+    let longitude_change;
+    let factor = Math.pow(10, 5);
+  
+    while (index < encoded.length) {
+      byte = null;
+      shift = 0;
+      result = 0;
+  
+      do {
+        byte = encoded.charCodeAt(index++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+  
+      latitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      shift = result = 0;
+  
+      do {
+        byte = encoded.charCodeAt(index++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+  
+      longitude_change = ((result & 1) ? ~(result >> 1) : (result >> 1));
+  
+      lat += latitude_change;
+      lng += longitude_change;
+  
+      coordinates.push({ latitude: lat / factor, longitude: lng / factor });
+    }
+  
+    return coordinates;
+  }
+
+  
+
   function getRota(rota) {
     fetch('https://editor.mobilibus.com/web/get-route-info', {
       method: 'POST',
@@ -317,20 +389,9 @@ export default function App() {
         const retorno = []
           data.forEach(element => {
             let value = element
-            const valores = value.stops.map((val)=>{return {latitude:val.lat ,longitude:val.lon } })
-            function removeItemDuplicado(array) {
-              let obj = {}
-              array.forEach(element => {
-                obj[JSON.stringify(element)]=element
-              });
-              let arr = []
-              Object.keys(obj).forEach(element => {
-                arr.push(obj[element])
-              });
-              return arr
-            }
-            const resultado = valores
-            retorno.push(resultado)
+            const valores = decodePolyline(value.shape) //value.stops.map((val)=>{return {latitude:val.lat ,longitude:val.lon } })
+
+            retorno.push(valores)
           });
           setRotas(retorno)
        })
@@ -371,12 +432,17 @@ export default function App() {
 
         <View style={styles.map}>
             <MapView
+              provider          = {undefined}
               ref               = { mapRef }
               style             = { styles.map }
               showsUserLocation = { true } 
               initialRegion     = { location }
-            
+              styles={{ flex: 1 }}
             >
+              <UrlTile
+                  urlTemplate="http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  zIndex={1}
+                />
               {
                 veiculos.map((value, index)=>{
                   return <Marker
@@ -429,6 +495,8 @@ export default function App() {
         </View>
     </View>
   );
+
+  
 }
 
 const styles = StyleSheet.create({

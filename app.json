@@ -15,6 +15,12 @@
       "supportsTablet": true
     },
     "android": {
+      "config":{
+          "googleMaps":{
+            "apiKey":"AIzaSyCT-UvG80YvcbNJHVVEZXMVTULw8fq8688"
+          }
+          
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -22,10 +28,17 @@
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
-      ]
+      ],
+      "package": "com.manolinho009.Movititi"
+      
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "66fe4a19-aaff-4d5e-a1db-a9575a6cfad1"
+      }
     }
   }
 }
